@@ -1,0 +1,10 @@
+# OS and Editor Files
+.DS_Store
+.vscode/
+.idea/
+*~
+
+# Node/npm (if skills include Node-based scripts)
+node_modules/
+npm-debug.log
+dist/

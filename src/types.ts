@@ -16,6 +16,7 @@ export interface CliArgs {
   on: string;
   exec: string[];
   execTimeout: number;
+  filesSeparator: string;
 }
 
 /** Result of running a single command */

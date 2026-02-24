@@ -8,11 +8,13 @@ const execAsync = promisify(exec);
 export async function executeCommand(
   command: string,
   timeoutMs: number,
+  env: Record<string, string>,
 ): Promise<CommandResult> {
   try {
     const { stdout, stderr } = await execAsync(command, {
       maxBuffer: 10 * 1024 * 1024,
       timeout: timeoutMs,
+      env: { ...process.env, ...env },
     });
     return { command, exitCode: 0, stdout, stderr };
   } catch (error: unknown) {
@@ -30,8 +32,9 @@ export async function executeCommand(
 export async function executeAll(
   commands: string[],
   timeoutMs: number,
+  env: Record<string, string>,
 ): Promise<CommandResult[]> {
-  return Promise.all(commands.map((cmd) => executeCommand(cmd, timeoutMs)));
+  return Promise.all(commands.map((cmd) => executeCommand(cmd, timeoutMs, env)));
 }
 
 /** Print details of failed commands to stderr */

@@ -19,13 +19,15 @@ function parseCliArgs(): CliArgs {
     .requiredOption('--on <glob>', 'Glob pattern to match changed files against')
     .requiredOption('--exec <command>', 'Command to execute (repeatable, run in parallel)', collect, [])
     .option('--exec-timeout <seconds>', 'Timeout per command in seconds', '300')
+    .option('--files-separator <sep>', 'Separator used in ON_CHANGES_RUN_* env vars', '\n')
     .parse(process.argv);
 
-  const opts = program.opts<{ on: string; exec: string[]; execTimeout: string }>();
+  const opts = program.opts<{ on: string; exec: string[]; execTimeout: string; filesSeparator: string }>();
   return {
     on: opts.on,
     exec: opts.exec,
     execTimeout: parseInt(opts.execTimeout, 10),
+    filesSeparator: opts.filesSeparator,
   };
 }
 
@@ -93,9 +95,13 @@ async function main(): Promise<void> {
     `gitdiff-watcher: ${changedFiles.length} file(s) changed matching "${args.on}", running ${args.exec.length} command(s)\n`,
   );
 
-  // Run all commands in parallel
+  // Run all commands in parallel, exposing file lists as env vars
   const timeoutMs = args.execTimeout * 1000;
-  const results = await executeAll(args.exec, timeoutMs);
+  const env = {
+    ON_CHANGES_RUN_DIFF_FILES: matchingFiles.join(args.filesSeparator),
+    ON_CHANGES_RUN_CHANGED_FILES: changedFiles.join(args.filesSeparator),
+  };
+  const results = await executeAll(args.exec, timeoutMs, env);
   const failures = results.filter((r) => r.exitCode !== 0);
 
   if (failures.length > 0) {

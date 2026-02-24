@@ -186,11 +186,11 @@ describe('loadState', () => {
     expect(loadState('/root', 'src/**/*.ts')).toEqual(patternState);
   });
 
-  it('reads from .claude/on-changes-run.state.json in git root', () => {
+  it('reads from .claude/on-changes-run/state.local.json in git root', () => {
     mockReadFileSync.mockImplementation(() => { throw new Error('ENOENT'); });
     loadState('/my/project', 'src/**/*.ts');
     expect(mockReadFileSync).toHaveBeenCalledWith(
-      join('/my/project', '.claude/on-changes-run.state.json'),
+      join('/my/project', '.claude/on-changes-run/state.local.json'),
       'utf-8',
     );
   });
@@ -233,17 +233,17 @@ describe('saveState', () => {
     expect(written['src/**/*.ts']).toEqual(patternState);
   });
 
-  it('ensures the .claude directory exists', async () => {
+  it('ensures the .claude/on-changes-run directory exists', async () => {
     mockReadFile.mockRejectedValue(new Error('ENOENT'));
     await saveState('/root', 'src/**/*.ts', patternState);
-    expect(mockMkdir).toHaveBeenCalledWith(join('/root', '.claude'), { recursive: true });
+    expect(mockMkdir).toHaveBeenCalledWith(join('/root', '.claude/on-changes-run'), { recursive: true });
   });
 
-  it('writes to .claude/on-changes-run.state.json in git root', async () => {
+  it('writes to .claude/on-changes-run/state.local.json in git root', async () => {
     mockReadFile.mockRejectedValue(new Error('ENOENT'));
     await saveState('/my/project', 'src/**/*.ts', patternState);
     expect(mockWriteFile).toHaveBeenCalledWith(
-      join('/my/project', '.claude/on-changes-run.state.json'),
+      join('/my/project', '.claude/on-changes-run/state.local.json'),
       expect.any(String),
     );
   });

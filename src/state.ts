@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { PatternState, StateFile } from './types.js';
 
-const STATE_FILENAME = '.claude/gitdiff-watcher.state.json';
+const STATE_FILENAME = '.claude/gitdiff-watcher/state.local.json';
 
 /** Compute SHA-256 hash of a file's content on disk */
 export async function computeFileHash(absolutePath: string): Promise<string> {
@@ -62,7 +62,7 @@ export async function saveState(
 
   stateFile[pattern] = state;
 
-  await mkdir(join(gitRoot, '.claude'), { recursive: true });
+  await mkdir(join(gitRoot, '.claude/on-changes-run'), { recursive: true });
   await writeFile(statePath, JSON.stringify(stateFile, null, 2) + '\n');
 }
 

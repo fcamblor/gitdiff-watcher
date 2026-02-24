@@ -8,7 +8,7 @@ const execAsync = promisify(exec);
 export async function executeCommand(
   command: string,
   timeoutMs: number,
-  env: Record<string, string>,
+  env: Record<string, string> = {},
 ): Promise<CommandResult> {
   try {
     const { stdout, stderr } = await execAsync(command, {
@@ -32,7 +32,7 @@ export async function executeCommand(
 export async function executeAll(
   commands: string[],
   timeoutMs: number,
-  env: Record<string, string>,
+  env: Record<string, string> = {},
 ): Promise<CommandResult[]> {
   return Promise.all(commands.map((cmd) => executeCommand(cmd, timeoutMs, env)));
 }

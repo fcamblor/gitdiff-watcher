@@ -1,10 +1,42 @@
 import { createHash } from 'node:crypto';
-import { readFile, writeFile, mkdir } from 'node:fs/promises';
+import { readFile, writeFile, mkdir, open, unlink } from 'node:fs/promises';
 import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, dirname } from 'node:path';
 import type { PatternState, StateFile } from './types.js';
 
-const STATE_FILENAME = '.claude/gitdiff-watcher/state.local.json';
+/** Acquire an exclusive file lock, run fn(), then release the lock.
+ *  Retries on contention (EEXIST) with a short random back-off. */
+async function withFileLock<T>(lockPath: string, fn: () => Promise<T>): Promise<T> {
+  const maxRetries = 20;
+  const baseDelayMs = 10;
+
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    let fd: Awaited<ReturnType<typeof open>> | undefined;
+    try {
+      fd = await open(lockPath, 'wx'); // atomic: throws EEXIST if lock exists
+      return await fn();
+    } catch (err: any) {
+      if (fd === undefined && err.code === 'EEXIST') {
+        // Lock held by another process — wait and retry
+        if (attempt < maxRetries - 1) {
+          await new Promise<void>((resolve) =>
+            setTimeout(resolve, baseDelayMs + Math.random() * baseDelayMs),
+          );
+          continue;
+        }
+        throw new Error(`Could not acquire state file lock at ${lockPath} after ${maxRetries} attempts`);
+      }
+      throw err;
+    } finally {
+      if (fd !== undefined) {
+        await fd.close().catch(() => {});
+        await unlink(lockPath).catch(() => {});
+      }
+    }
+  }
+  /* istanbul ignore next */
+  throw new Error('Unexpected end of withFileLock loop');
+}
 
 /** Compute SHA-256 hash of a file's content on disk */
 export async function computeFileHash(absolutePath: string): Promise<string> {
@@ -33,8 +65,7 @@ export async function computeHashes(
 }
 
 /** Load previous state for a given pattern from the state file */
-export function loadState(gitRoot: string, pattern: string): PatternState | null {
-  const statePath = join(gitRoot, STATE_FILENAME);
+export function loadState(statePath: string, pattern: string): PatternState | null {
   try {
     const raw = readFileSync(statePath, 'utf-8');
     const stateFile: StateFile = JSON.parse(raw);
@@ -44,26 +75,30 @@ export function loadState(gitRoot: string, pattern: string): PatternState | null
   }
 }
 
-/** Save state for a given pattern to the state file */
+/** Save state for a given pattern to the state file (thread-safe via file lock) */
 export async function saveState(
-  gitRoot: string,
+  statePath: string,
   pattern: string,
   state: PatternState,
 ): Promise<void> {
-  const statePath = join(gitRoot, STATE_FILENAME);
-  let stateFile: StateFile = {};
+  const lockPath = `${statePath}.lock`;
 
-  try {
-    const raw = await readFile(statePath, 'utf-8');
-    stateFile = JSON.parse(raw);
-  } catch {
-    // File doesn't exist yet, start fresh
-  }
+  // Ensure the parent directory exists (idempotent, safe to call concurrently)
+  await mkdir(dirname(statePath), { recursive: true });
 
-  stateFile[pattern] = state;
+  await withFileLock(lockPath, async () => {
+    let stateFile: StateFile = {};
 
-  await mkdir(join(gitRoot, '.claude/on-changes-run'), { recursive: true });
-  await writeFile(statePath, JSON.stringify(stateFile, null, 2) + '\n');
+    try {
+      const raw = await readFile(statePath, 'utf-8');
+      stateFile = JSON.parse(raw);
+    } catch {
+      // File doesn't exist yet, start fresh
+    }
+
+    stateFile[pattern] = state;
+    await writeFile(statePath, JSON.stringify(stateFile, null, 2) + '\n');
+  });
 }
 
 /** Find files that changed between two snapshots */

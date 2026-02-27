@@ -1,18 +1,22 @@
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import { createHash } from 'node:crypto';
-import { join } from 'node:path';
+import { join, dirname } from 'node:path';
+
+const mockFd = { close: vi.fn().mockResolvedValue(undefined) };
 
 vi.mock('node:fs/promises', () => ({
   readFile: vi.fn(),
   writeFile: vi.fn(),
   mkdir: vi.fn(),
+  open: vi.fn(),
+  unlink: vi.fn(),
 }));
 
 vi.mock('node:fs', () => ({
   readFileSync: vi.fn(),
 }));
 
-import { readFile, writeFile, mkdir } from 'node:fs/promises';
+import { readFile, writeFile, mkdir, open, unlink } from 'node:fs/promises';
 import { readFileSync } from 'node:fs';
 import {
   computeFileHash,
@@ -25,12 +29,17 @@ import {
 const mockReadFile = vi.mocked(readFile);
 const mockWriteFile = vi.mocked(writeFile);
 const mockMkdir = vi.mocked(mkdir);
+const mockOpen = vi.mocked(open);
+const mockUnlink = vi.mocked(unlink);
 const mockReadFileSync = vi.mocked(readFileSync);
 
 beforeEach(() => {
   vi.clearAllMocks();
   mockWriteFile.mockResolvedValue(undefined);
   mockMkdir.mockResolvedValue(undefined);
+  mockOpen.mockResolvedValue(mockFd as any);
+  mockUnlink.mockResolvedValue(undefined);
+  mockFd.close.mockResolvedValue(undefined);
 });
 
 // ---------------------------------------------------------------------------
@@ -159,20 +168,22 @@ describe('computeHashes', () => {
 // ---------------------------------------------------------------------------
 
 describe('loadState', () => {
+  const statePath = '/root/.claude/gitdiff-watcher.state.json';
+
   it('returns null when state file does not exist', () => {
     mockReadFileSync.mockImplementation(() => { throw new Error('ENOENT'); });
-    expect(loadState('/root', 'src/**/*.ts')).toBeNull();
+    expect(loadState(statePath, 'src/**/*.ts')).toBeNull();
   });
 
   it('returns null when state file contains invalid JSON', () => {
     mockReadFileSync.mockReturnValue('{ invalid json }');
-    expect(loadState('/root', 'src/**/*.ts')).toBeNull();
+    expect(loadState(statePath, 'src/**/*.ts')).toBeNull();
   });
 
   it('returns null when pattern is not found in state file', () => {
     const state = { 'other/**/*.ts': { headSha: 'abc', fileHashes: {} } };
     mockReadFileSync.mockReturnValue(JSON.stringify(state));
-    expect(loadState('/root', 'src/**/*.ts')).toBeNull();
+    expect(loadState(statePath, 'src/**/*.ts')).toBeNull();
   });
 
   it('returns the pattern state when found', () => {
@@ -183,16 +194,14 @@ describe('loadState', () => {
     const stateFile = { 'src/**/*.ts': patternState };
     mockReadFileSync.mockReturnValue(JSON.stringify(stateFile));
 
-    expect(loadState('/root', 'src/**/*.ts')).toEqual(patternState);
+    expect(loadState(statePath, 'src/**/*.ts')).toEqual(patternState);
   });
 
-  it('reads from .claude/on-changes-run/state.local.json in git root', () => {
+  it('reads from the provided state file path', () => {
     mockReadFileSync.mockImplementation(() => { throw new Error('ENOENT'); });
-    loadState('/my/project', 'src/**/*.ts');
-    expect(mockReadFileSync).toHaveBeenCalledWith(
-      join('/my/project', '.claude/on-changes-run/state.local.json'),
-      'utf-8',
-    );
+    const customPath = '/my/project/.claude/gitdiff-watcher.state.json';
+    loadState(customPath, 'src/**/*.ts');
+    expect(mockReadFileSync).toHaveBeenCalledWith(customPath, 'utf-8');
   });
 });
 
@@ -201,12 +210,14 @@ describe('loadState', () => {
 // ---------------------------------------------------------------------------
 
 describe('saveState', () => {
+  const statePath = '/root/.claude/gitdiff-watcher.state.json';
+  const lockPath = `${statePath}.lock`;
   const patternState = { headSha: 'abc123', fileHashes: { 'src/a.ts': 'hash1' } };
 
   it('creates a new state file when none exists', async () => {
     mockReadFile.mockRejectedValue(new Error('ENOENT'));
 
-    await saveState('/root', 'src/**/*.ts', patternState);
+    await saveState(statePath, 'src/**/*.ts', patternState);
 
     const written = JSON.parse(vi.mocked(mockWriteFile).mock.calls[0][1] as string);
     expect(written['src/**/*.ts']).toEqual(patternState);
@@ -216,7 +227,7 @@ describe('saveState', () => {
     const existing = { 'backend/**/*.kt': { headSha: 'def456', fileHashes: {} } };
     mockReadFile.mockResolvedValue(JSON.stringify(existing) as any);
 
-    await saveState('/root', 'src/**/*.ts', patternState);
+    await saveState(statePath, 'src/**/*.ts', patternState);
 
     const written = JSON.parse(vi.mocked(mockWriteFile).mock.calls[0][1] as string);
     expect(written['backend/**/*.kt']).toEqual(existing['backend/**/*.kt']);
@@ -227,24 +238,58 @@ describe('saveState', () => {
     const oldState = { 'src/**/*.ts': { headSha: 'old', fileHashes: {} } };
     mockReadFile.mockResolvedValue(JSON.stringify(oldState) as any);
 
-    await saveState('/root', 'src/**/*.ts', patternState);
+    await saveState(statePath, 'src/**/*.ts', patternState);
 
     const written = JSON.parse(vi.mocked(mockWriteFile).mock.calls[0][1] as string);
     expect(written['src/**/*.ts']).toEqual(patternState);
   });
 
-  it('ensures the .claude/on-changes-run directory exists', async () => {
+  it('ensures the parent directory of the state file exists', async () => {
     mockReadFile.mockRejectedValue(new Error('ENOENT'));
-    await saveState('/root', 'src/**/*.ts', patternState);
-    expect(mockMkdir).toHaveBeenCalledWith(join('/root', '.claude/on-changes-run'), { recursive: true });
+    await saveState(statePath, 'src/**/*.ts', patternState);
+    expect(mockMkdir).toHaveBeenCalledWith(dirname(statePath), { recursive: true });
   });
 
-  it('writes to .claude/on-changes-run/state.local.json in git root', async () => {
+  it('writes to the provided state file path', async () => {
     mockReadFile.mockRejectedValue(new Error('ENOENT'));
-    await saveState('/my/project', 'src/**/*.ts', patternState);
-    expect(mockWriteFile).toHaveBeenCalledWith(
-      join('/my/project', '.claude/on-changes-run/state.local.json'),
-      expect.any(String),
+    const customPath = '/my/project/.claude/gitdiff-watcher.state.json';
+    await saveState(customPath, 'src/**/*.ts', patternState);
+    expect(mockWriteFile).toHaveBeenCalledWith(customPath, expect.any(String));
+  });
+
+  it('acquires an exclusive lock before writing', async () => {
+    mockReadFile.mockRejectedValue(new Error('ENOENT'));
+    await saveState(statePath, 'src/**/*.ts', patternState);
+    expect(mockOpen).toHaveBeenCalledWith(lockPath, 'wx');
+  });
+
+  it('releases the lock after a successful write', async () => {
+    mockReadFile.mockRejectedValue(new Error('ENOENT'));
+    await saveState(statePath, 'src/**/*.ts', patternState);
+    expect(mockFd.close).toHaveBeenCalled();
+    expect(mockUnlink).toHaveBeenCalledWith(lockPath);
+  });
+
+  it('retries when lock is initially held by another process', async () => {
+    mockReadFile.mockRejectedValue(new Error('ENOENT'));
+    // First attempt: EEXIST (lock held), second attempt: success
+    const eexist = Object.assign(new Error('lock exists'), { code: 'EEXIST' });
+    mockOpen
+      .mockRejectedValueOnce(eexist)
+      .mockResolvedValueOnce(mockFd as any);
+
+    await saveState(statePath, 'src/**/*.ts', patternState);
+
+    expect(mockOpen).toHaveBeenCalledTimes(2);
+    expect(mockWriteFile).toHaveBeenCalledTimes(1);
+  });
+
+  it('throws after exhausting all lock retries', async () => {
+    const eexist = Object.assign(new Error('lock exists'), { code: 'EEXIST' });
+    mockOpen.mockRejectedValue(eexist);
+
+    await expect(saveState(statePath, 'src/**/*.ts', patternState)).rejects.toThrow(
+      /Could not acquire state file lock/,
     );
   });
 });

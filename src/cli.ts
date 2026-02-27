@@ -1,11 +1,14 @@
 #!/usr/bin/env node
 
 import { Command } from 'commander';
+import { join } from 'node:path';
 import picomatch from 'picomatch';
 import type { CliArgs, PatternState } from './types.js';
 import { getGitRoot, getHeadSha, getDiffFiles } from './git.js';
 import { computeHashes, loadState, saveState, findChangedFiles } from './state.js';
 import { executeAll, printFailures } from './executor.js';
+
+const DEFAULT_STATE_FILE = '.claude/gitdiff-watcher.state.json';
 
 function collect(value: string, previous: string[]): string[] {
   return previous.concat([value]);
@@ -19,15 +22,23 @@ function parseCliArgs(): CliArgs {
     .requiredOption('--on <glob>', 'Glob pattern to match changed files against')
     .requiredOption('--exec <command>', 'Command to execute (repeatable, run in parallel)', collect, [])
     .option('--exec-timeout <seconds>', 'Timeout per command in seconds', '300')
-    .option('--files-separator <sep>', 'Separator used in ON_CHANGES_RUN_* env vars', '\n')
+    .option('--files-separator <sep>', 'Separator used in {{ON_CHANGES_RUN_*}} template vars', '\n')
+    .option('--state-file <path>', 'Path to the state file (relative to git root)', DEFAULT_STATE_FILE)
     .parse(process.argv);
 
-  const opts = program.opts<{ on: string; exec: string[]; execTimeout: string; filesSeparator: string }>();
+  const opts = program.opts<{
+    on: string;
+    exec: string[];
+    execTimeout: string;
+    filesSeparator: string;
+    stateFile: string;
+  }>();
   return {
     on: opts.on,
     exec: opts.exec,
     execTimeout: parseInt(opts.execTimeout, 10),
     filesSeparator: opts.filesSeparator,
+    stateFile: opts.stateFile,
   };
 }
 
@@ -58,6 +69,9 @@ async function main(): Promise<void> {
   const gitRoot = await getGitRoot();
   const headSha = await getHeadSha();
 
+  // Resolve state file path relative to git root
+  const statePath = join(gitRoot, args.stateFile);
+
   // Get files in git diff (unstaged + staged)
   const diffFiles = await getDiffFiles();
 
@@ -70,22 +84,19 @@ async function main(): Promise<void> {
   const currentState: PatternState = { headSha, fileHashes: currentHashes };
 
   // Load previous state
-  const previousState = loadState(gitRoot, args.on);
+  const previousState = loadState(statePath, args.on);
 
   if (!previousState) {
     // First run: store baseline, exit successfully
     process.stderr.write(
       `gitdiff-watcher: first run for pattern "${args.on}", storing baseline (${matchingFiles.length} files tracked)\n`,
     );
-    await saveState(gitRoot, args.on, currentState);
+    await saveState(statePath, args.on, currentState);
     process.exit(0);
   }
 
   // Detect changes between previous and current snapshots
   const changedFiles = findChangedFiles(previousState.fileHashes, currentHashes);
-
-  // Always save new state
-  await saveState(gitRoot, args.on, currentState);
 
   if (changedFiles.length === 0) {
     process.exit(0);
@@ -95,19 +106,22 @@ async function main(): Promise<void> {
     `gitdiff-watcher: ${changedFiles.length} file(s) changed matching "${args.on}", running ${args.exec.length} command(s)\n`,
   );
 
-  // Run all commands in parallel, exposing file lists as env vars
+  // Run all commands in parallel, exposing file lists as template variables
   const timeoutMs = args.execTimeout * 1000;
-  const env = {
+  const templateVars = {
     ON_CHANGES_RUN_DIFF_FILES: matchingFiles.join(args.filesSeparator),
     ON_CHANGES_RUN_CHANGED_FILES: changedFiles.join(args.filesSeparator),
   };
-  const results = await executeAll(args.exec, timeoutMs, env);
+  const results = await executeAll(args.exec, timeoutMs, templateVars);
   const failures = results.filter((r) => r.exitCode !== 0);
 
   if (failures.length > 0) {
     printFailures(failures);
     process.exit(1);
   }
+
+  // Save state only after all commands succeeded
+  await saveState(statePath, args.on, currentState);
 
   process.exit(0);
 }

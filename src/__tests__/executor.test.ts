@@ -5,7 +5,7 @@ vi.mock('node:child_process', () => ({
 }));
 
 import { exec } from 'node:child_process';
-import { executeCommand, executeAll, printFailures } from '../executor.js';
+import { interpolateTemplate, executeCommand, executeAll, printFailures } from '../executor.js';
 
 const mockExec = vi.mocked(exec);
 
@@ -29,6 +29,37 @@ function stubExecFailure(exitCode: number, stdout = '', stderr = '') {
 
 beforeEach(() => {
   mockExec.mockReset();
+});
+
+// ---------------------------------------------------------------------------
+// interpolateTemplate — pure function, no mocks needed
+// ---------------------------------------------------------------------------
+
+describe('interpolateTemplate', () => {
+  it('replaces a single {{VAR}} placeholder', () => {
+    expect(interpolateTemplate('lint {{FILES}}', { FILES: 'a.ts b.ts' })).toBe('lint a.ts b.ts');
+  });
+
+  it('replaces multiple occurrences of the same placeholder', () => {
+    expect(interpolateTemplate('{{X}} and {{X}}', { X: 'hello' })).toBe('hello and hello');
+  });
+
+  it('replaces multiple distinct placeholders', () => {
+    const result = interpolateTemplate('{{A}} {{B}}', { A: 'foo', B: 'bar' });
+    expect(result).toBe('foo bar');
+  });
+
+  it('leaves unknown placeholders intact', () => {
+    expect(interpolateTemplate('cmd {{UNKNOWN}}', {})).toBe('cmd {{UNKNOWN}}');
+  });
+
+  it('returns the command unchanged when there are no placeholders', () => {
+    expect(interpolateTemplate('npm run lint', { FILES: 'a.ts' })).toBe('npm run lint');
+  });
+
+  it('handles empty vars map', () => {
+    expect(interpolateTemplate('{{VAR}}', {})).toBe('{{VAR}}');
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -84,28 +115,42 @@ describe('executeCommand', () => {
     expect(result.stderr).toBe('');
   });
 
-  it('passes the command string through to the result', async () => {
+  it('stores the original (non-interpolated) command in the result', async () => {
     stubExecSuccess('');
-    const result = await executeCommand('cd frontend && npm run lint', 5000);
-    expect(result.command).toBe('cd frontend && npm run lint');
+    const result = await executeCommand('lint {{FILES}}', 5000, { FILES: 'a.ts' });
+    expect(result.command).toBe('lint {{FILES}}');
   });
 
-  it('passes env vars to the child process', async () => {
+  it('executes the interpolated command string', async () => {
     stubExecSuccess('');
-    const env = { MY_VAR: 'my_value' };
-    await executeCommand('echo $MY_VAR', 5000, env);
+    await executeCommand('lint {{FILES}}', 5000, { ON_CHANGES_RUN_CHANGED_FILES: 'a.ts b.ts' });
     expect(mockExec).toHaveBeenCalledWith(
-      'echo $MY_VAR',
-      expect.objectContaining({ env: expect.objectContaining({ MY_VAR: 'my_value' }) }),
+      'lint {{FILES}}', // unknown placeholder stays intact
+      expect.any(Object),
       expect.any(Function),
     );
   });
 
-  it('merges env vars with process.env', async () => {
+  it('interpolates {{VAR}} placeholders before executing', async () => {
     stubExecSuccess('');
-    await executeCommand('cmd', 5000, { CUSTOM: 'value' });
-    const callOpts = vi.mocked(mockExec).mock.calls[0][1] as any;
-    expect(callOpts.env).toMatchObject({ CUSTOM: 'value', ...process.env });
+    await executeCommand('npm run typecheck {{ON_CHANGES_RUN_CHANGED_FILES}}', 5000, {
+      ON_CHANGES_RUN_CHANGED_FILES: 'src/a.ts src/b.ts',
+    });
+    expect(mockExec).toHaveBeenCalledWith(
+      'npm run typecheck src/a.ts src/b.ts',
+      expect.any(Object),
+      expect.any(Function),
+    );
+  });
+
+  it('leaves unknown {{PLACEHOLDERS}} intact in the executed command', async () => {
+    stubExecSuccess('');
+    await executeCommand('cmd {{UNKNOWN_VAR}}', 5000, {});
+    expect(mockExec).toHaveBeenCalledWith(
+      'cmd {{UNKNOWN_VAR}}',
+      expect.any(Object),
+      expect.any(Function),
+    );
   });
 
   it('passes timeout to exec options', async () => {
@@ -142,14 +187,13 @@ describe('executeAll', () => {
     expect(await executeAll([], 5000)).toEqual([]);
   });
 
-  it('passes env vars to all commands', async () => {
+  it('passes template vars to all commands for interpolation', async () => {
     stubExecSuccess('');
     stubExecSuccess('');
-    const env = { FOO: 'bar' };
-    await executeAll(['cmd1', 'cmd2'], 5000, env);
-    for (const call of mockExec.mock.calls) {
-      expect((call[1] as any).env).toMatchObject({ FOO: 'bar' });
-    }
+    const templateVars = { ON_CHANGES_RUN_CHANGED_FILES: 'src/a.ts' };
+    await executeAll(['lint {{ON_CHANGES_RUN_CHANGED_FILES}}', 'check {{ON_CHANGES_RUN_CHANGED_FILES}}'], 5000, templateVars);
+    expect(mockExec.mock.calls[0][0]).toBe('lint src/a.ts');
+    expect(mockExec.mock.calls[1][0]).toBe('check src/a.ts');
   });
 });
 

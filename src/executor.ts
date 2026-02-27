@@ -4,17 +4,22 @@ import type { CommandResult } from './types.js';
 
 const execAsync = promisify(exec);
 
-/** Execute a single shell command and capture its output */
+/** Replace {{VAR}} placeholders in a command string with values from vars */
+export function interpolateTemplate(command: string, vars: Record<string, string>): string {
+  return command.replace(/\{\{(\w+)\}\}/g, (match, key) => vars[key] ?? match);
+}
+
+/** Execute a single shell command after template interpolation */
 export async function executeCommand(
   command: string,
   timeoutMs: number,
-  env: Record<string, string> = {},
+  templateVars: Record<string, string> = {},
 ): Promise<CommandResult> {
+  const interpolatedCommand = interpolateTemplate(command, templateVars);
   try {
-    const { stdout, stderr } = await execAsync(command, {
+    const { stdout, stderr } = await execAsync(interpolatedCommand, {
       maxBuffer: 10 * 1024 * 1024,
       timeout: timeoutMs,
-      env: { ...process.env, ...env },
     });
     return { command, exitCode: 0, stdout, stderr };
   } catch (error: unknown) {
@@ -32,9 +37,9 @@ export async function executeCommand(
 export async function executeAll(
   commands: string[],
   timeoutMs: number,
-  env: Record<string, string> = {},
+  templateVars: Record<string, string> = {},
 ): Promise<CommandResult[]> {
-  return Promise.all(commands.map((cmd) => executeCommand(cmd, timeoutMs, env)));
+  return Promise.all(commands.map((cmd) => executeCommand(cmd, timeoutMs, templateVars)));
 }
 
 /** Print details of failed commands to stderr */

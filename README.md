@@ -1,5 +1,7 @@
 # gitdiff-watcher
 
+> ⚠️ **Work in progress** — this project is not yet stable. APIs, CLI options, and the state file format may change at any time.
+
 Run commands when files matching a glob pattern change between executions. Designed as a [Claude Code](https://docs.anthropic.com/en/docs/claude-code) lifecycle hook (`Stop` / `SubagentStop`).
 
 ## How it works
@@ -10,6 +12,54 @@ Run commands when files matching a glob pattern change between executions. Desig
 4. On the **first run**, it stores a baseline and exits successfully without running any commands.
 
 State is persisted in `<git-root>/.claude/gitdiff-watcher.state.json`.
+
+## Internals
+
+### State file
+
+The state file is a JSON object keyed by glob pattern. For each pattern, it stores:
+
+- **`headSha`** — the HEAD commit SHA at the time of the last run, used to determine which files are "diverged" from HEAD
+- **`fileHashes`** — a map of relative file path → SHA-256 content hash, covering only the files currently reported by `git diff` (unstaged or staged) that match the glob pattern, whether or not those files are tracked by git
+- **`lastSuccessAt`** — ISO-8601 timestamp of the last run that triggered commands and completed successfully (absent on the initial baseline run)
+
+```json
+{
+  "frontend/**/*.ts": {
+    "headSha": "a1b2c3d4ef5678...",
+    "lastSuccessAt": "2025-06-10T14:32:00.000Z",
+    "fileHashes": {
+      "frontend/src/app.ts": "e3b0c44298fc1c149afb...",
+      "frontend/src/utils.ts": "9f86d081884c7d659a2f..."
+    }
+  },
+  "backend/**/*.kt": {
+    "headSha": "a1b2c3d4ef5678...",
+    "lastSuccessAt": "2025-06-10T14:31:55.000Z",
+    "fileHashes": {
+      "backend/src/main/App.kt": "2c624232cdd221771294..."
+    }
+  }
+}
+```
+
+Multiple glob patterns can coexist in the same state file, each with their own independent snapshot.
+
+### Change detection between two executions
+
+On each run, `gitdiff-watcher`:
+
+1. Collects files reported by `git diff HEAD` (unstaged changes) and `git diff --cached` (staged changes), then filters them against the provided glob pattern.
+2. Computes a SHA-256 hash of the on-disk content of each matching file.
+3. Loads the previous snapshot for that pattern from the state file (if any).
+4. Compares the two snapshots to identify:
+   - **New files** — present in the current snapshot but not in the previous one
+   - **Modified files** — present in both snapshots but with a different hash
+   - **Deleted files** — present in the previous snapshot but absent from the current one
+5. If any such file is detected, the configured commands are triggered.
+6. The state file is updated **only if all commands succeeded**. If any command fails, the snapshot is left untouched so that the next run will re-detect the same changes and re-trigger the commands.
+
+The comparison is purely hash-based: timestamps and metadata are ignored.
 
 ## Installation
 

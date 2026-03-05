@@ -189,7 +189,7 @@ describe('loadState', () => {
   });
 
   it('returns null when pattern is not found in state file', () => {
-    const state = { 'other/**/*.ts': { headSha: 'abc', fileHashes: {} } };
+    const state = { 'other/**/*.ts': { headSha: 'abc', divergedFileHashes: {} } };
     mockReadFileSync.mockReturnValue(JSON.stringify(state));
     expect(loadState(statePath, 'src/**/*.ts')).toBeNull();
   });
@@ -197,7 +197,7 @@ describe('loadState', () => {
   it('returns the pattern state when found', () => {
     const patternState = {
       headSha: 'a4872f4',
-      fileHashes: { 'src/a.ts': 'hash1' },
+      divergedFileHashes: { 'src/a.ts': 'hash1' },
     };
     const stateFile = { 'src/**/*.ts': patternState };
     mockReadFileSync.mockReturnValue(JSON.stringify(stateFile));
@@ -215,7 +215,7 @@ describe('loadState', () => {
   it('returns lastSuccessAt when present in the state file', () => {
     const patternState = {
       headSha: 'abc',
-      fileHashes: { 'src/a.ts': 'hash1' },
+      divergedFileHashes: { 'src/a.ts': 'hash1' },
       lastSuccessAt: '2026-01-15T10:00:00.000Z',
     };
     mockReadFileSync.mockReturnValue(JSON.stringify({ 'src/**/*.ts': patternState }));
@@ -230,7 +230,7 @@ describe('loadState', () => {
 describe('saveState', () => {
   const statePath = '/root/.claude/gitdiff-watcher.state.json';
   const lockPath = `${statePath}.lock`;
-  const patternState = { headSha: 'abc123', fileHashes: { 'src/a.ts': 'hash1' } };
+  const patternState = { headSha: 'abc123', divergedFileHashes: { 'src/a.ts': 'hash1' } };
 
   it('creates a new state file when none exists', async () => {
     mockReadFile.mockRejectedValue(new Error('ENOENT'));
@@ -242,7 +242,7 @@ describe('saveState', () => {
   });
 
   it('merges into existing state file without overwriting other patterns', async () => {
-    const existing = { 'backend/**/*.kt': { headSha: 'def456', fileHashes: {} } };
+    const existing = { 'backend/**/*.kt': { headSha: 'def456', divergedFileHashes: {} } };
     mockReadFile.mockResolvedValue(JSON.stringify(existing) as any);
 
     await saveState(statePath, 'src/**/*.ts', patternState);
@@ -253,7 +253,7 @@ describe('saveState', () => {
   });
 
   it('overwrites the state for an existing pattern', async () => {
-    const oldState = { 'src/**/*.ts': { headSha: 'old', fileHashes: {} } };
+    const oldState = { 'src/**/*.ts': { headSha: 'old', divergedFileHashes: {} } };
     mockReadFile.mockResolvedValue(JSON.stringify(oldState) as any);
 
     await saveState(statePath, 'src/**/*.ts', patternState);
@@ -315,7 +315,7 @@ describe('saveState', () => {
     mockReadFile.mockRejectedValue(new Error('ENOENT'));
     const stateWithTimestamp = {
       headSha: 'abc123',
-      fileHashes: { 'src/a.ts': 'hash1' },
+      divergedFileHashes: { 'src/a.ts': 'hash1' },
       lastSuccessAt: '2026-01-15T10:00:00.000Z',
     };
 

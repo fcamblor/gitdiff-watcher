@@ -138,7 +138,7 @@ describe('578d7cc — lastSuccessAt timestamp saved after successful run', () =>
     const mocks = createMocks({
       git: { getDiffFiles: vi.fn().mockResolvedValue(['src/a.ts']) },
       state: {
-        loadState: vi.fn().mockReturnValue({ headSha: 'prevSha', fileHashes: { 'src/a.ts': 'oldhash' } }),
+        loadState: vi.fn().mockReturnValue({ headSha: 'prevSha', divergedFileHashes: { 'src/a.ts': 'oldhash' } }),
         computeHashes: vi.fn().mockResolvedValue({ 'src/a.ts': 'newhash' }),
         findChangedFiles: vi.fn().mockReturnValue(['src/a.ts']),
       },
@@ -160,7 +160,7 @@ describe('578d7cc — lastSuccessAt timestamp saved after successful run', () =>
     const mocks = createMocks({
       git: { getDiffFiles: vi.fn().mockResolvedValue(['src/a.ts']) },
       state: {
-        loadState: vi.fn().mockReturnValue({ headSha: 'prevSha', fileHashes: {} }),
+        loadState: vi.fn().mockReturnValue({ headSha: 'prevSha', divergedFileHashes: {} }),
         computeHashes: vi.fn().mockResolvedValue({ 'src/a.ts': 'hash1' }),
         findChangedFiles: vi.fn().mockReturnValue(['src/a.ts']),
       },
@@ -244,7 +244,7 @@ describe('d5dd228 — inter-commit diff files included when HEAD has moved', () 
         getDiffFilesBetweenCommits: vi.fn().mockResolvedValue([]),
       },
       state: {
-        loadState: vi.fn().mockReturnValue({ headSha: 'oldSha', fileHashes: {} }),
+        loadState: vi.fn().mockReturnValue({ headSha: 'oldSha', divergedFileHashes: {} }),
         computeHashes: vi.fn().mockResolvedValue({}),
         findChangedFiles: vi.fn().mockReturnValue([]),
       },
@@ -262,7 +262,7 @@ describe('d5dd228 — inter-commit diff files included when HEAD has moved', () 
         getDiffFiles: vi.fn().mockResolvedValue([]),
       },
       state: {
-        loadState: vi.fn().mockReturnValue({ headSha: 'sameSha', fileHashes: {} }),
+        loadState: vi.fn().mockReturnValue({ headSha: 'sameSha', divergedFileHashes: {} }),
         computeHashes: vi.fn().mockResolvedValue({}),
         findChangedFiles: vi.fn().mockReturnValue([]),
       },
@@ -300,7 +300,7 @@ describe('d5dd228 — inter-commit diff files included when HEAD has moved', () 
         getDiffFilesBetweenCommits: vi.fn().mockResolvedValue(['src/a.ts', 'docs/README.md']),
       },
       state: {
-        loadState: vi.fn().mockReturnValue({ headSha: 'oldSha', fileHashes: {} }),
+        loadState: vi.fn().mockReturnValue({ headSha: 'oldSha', divergedFileHashes: {} }),
         computeHashes: vi.fn().mockResolvedValue({ 'src/a.ts': 'hash1' }),
         findChangedFiles: vi.fn().mockReturnValue(['src/a.ts']),
       },
@@ -325,7 +325,7 @@ describe('d5dd228 — inter-commit diff files included when HEAD has moved', () 
         getDiffFilesBetweenCommits: vi.fn().mockResolvedValue(['src/a.ts', 'src/b.ts']),
       },
       state: {
-        loadState: vi.fn().mockReturnValue({ headSha: 'oldSha', fileHashes: {} }),
+        loadState: vi.fn().mockReturnValue({ headSha: 'oldSha', divergedFileHashes: {} }),
         computeHashes: vi.fn().mockResolvedValue({ 'src/a.ts': 'hash1', 'src/b.ts': 'hash2' }),
         findChangedFiles: vi.fn().mockReturnValue(['src/a.ts', 'src/b.ts']),
       },

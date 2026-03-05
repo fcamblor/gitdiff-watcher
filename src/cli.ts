@@ -91,10 +91,10 @@ async function main(): Promise<void> {
 
   // Compute hashes for matching files
   const currentHashes = await computeHashes(gitRoot, matchingFiles);
-  const currentState: PatternState = { headSha, fileHashes: currentHashes };
+  const currentState: PatternState = { headSha, divergedFileHashes: currentHashes };
 
   // Detect changes between previous and current snapshots
-  const changedFiles = findChangedFiles(previousState?.fileHashes ?? {}, currentHashes);
+  const changedFiles = findChangedFiles(previousState?.divergedFileHashes ?? {}, currentHashes);
 
   if (changedFiles.length === 0) {
     process.exit(0);

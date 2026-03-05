@@ -66,7 +66,7 @@ State is persisted in `<git-root>/.claude/gitdiff-watcher.state.json`.
 The state file is a JSON object keyed by glob pattern. For each pattern, it stores:
 
 - **`headSha`** - the HEAD commit SHA at the time of the last run, used to determine which files are "diverged" from HEAD
-- **`fileHashes`** - a map of relative file path → SHA-256 content hash, covering only the files currently reported by `git diff` (unstaged or staged) that match the glob pattern, whether or not those files are tracked by git
+- **`divergedFileHashes`** - a map of relative file path → SHA-256 content hash, covering only the files currently reported by `git diff` (unstaged or staged) that match the glob pattern, whether or not those files are tracked by git
 - **`lastSuccessAt`** - ISO-8601 timestamp of the last run that triggered commands and completed successfully
 
 ```json
@@ -74,7 +74,7 @@ The state file is a JSON object keyed by glob pattern. For each pattern, it stor
   "frontend/**/*.ts": {
     "headSha": "a1b2c3d4ef5678...",
     "lastSuccessAt": "2025-06-10T14:32:00.000Z",
-    "fileHashes": {
+    "divergedFileHashes": {
       "frontend/src/app.ts": "e3b0c44298fc1c149afb...",
       "frontend/src/utils.ts": "9f86d081884c7d659a2f..."
     }
@@ -82,7 +82,7 @@ The state file is a JSON object keyed by glob pattern. For each pattern, it stor
   "backend/**/*.kt": {
     "headSha": "a1b2c3d4ef5678...",
     "lastSuccessAt": "2025-06-10T14:31:55.000Z",
-    "fileHashes": {
+    "divergedFileHashes": {
       "backend/src/main/App.kt": "2c624232cdd221771294..."
     }
   }

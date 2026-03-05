@@ -3,7 +3,7 @@ export interface PatternState {
   /** HEAD commit SHA at time of last run */
   headSha: string;
   /** Map of relative file path -> content hash (SHA-256 hex) */
-  fileHashes: Record<string, string>;
+  divergedFileHashes: Record<string, string>;
   /** ISO-8601 timestamp of the last successful command execution (undefined on first/baseline run) */
   lastSuccessAt?: string;
 }

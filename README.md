@@ -108,14 +108,6 @@ On each run, `gitdiff-watcher`:
 
 The comparison is purely hash-based: timestamps and metadata are ignored.
 
-## Installation
-
-```bash
-npx gitdiff-watcher --on '<glob>' --exec '<command>'
-```
-
-No installation needed when using `npx`.
-
 ## Usage
 
 ```bash
@@ -135,7 +127,5 @@ npx gitdiff-watcher \
 
 ### Exit codes
 
-- `0` - All commands succeeded (or no changes detected)
-- `1` - At least one command failed (error output is printed to stderr)
-
-When a command fails, its stdout/stderr is printed to stderr so the LLM can interpret the errors and fix the issues.
+- `0` - All commands succeeded (or no changes detected) — no output is produced, keeping hooks invisible and saving LLM context tokens
+- `1` - At least one command failed — stdout/stderr of the failing command is printed to stderr so the LLM can interpret the errors and fix the issues

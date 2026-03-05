@@ -4,6 +4,8 @@ export interface PatternState {
   headSha: string;
   /** Map of relative file path -> content hash (SHA-256 hex) */
   fileHashes: Record<string, string>;
+  /** ISO-8601 timestamp of the last successful command execution (undefined on first/baseline run) */
+  lastSuccessAt?: string;
 }
 
 /** Root state file shape, keyed by glob pattern */

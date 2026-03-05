@@ -121,7 +121,7 @@ async function main(): Promise<void> {
   }
 
   // Save state only after all commands succeeded
-  await saveState(statePath, args.on, currentState);
+  await saveState(statePath, args.on, { ...currentState, lastSuccessAt: new Date().toISOString() });
 
   process.exit(0);
 }

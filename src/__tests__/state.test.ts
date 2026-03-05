@@ -203,6 +203,16 @@ describe('loadState', () => {
     loadState(customPath, 'src/**/*.ts');
     expect(mockReadFileSync).toHaveBeenCalledWith(customPath, 'utf-8');
   });
+
+  it('returns lastSuccessAt when present in the state file', () => {
+    const patternState = {
+      headSha: 'abc',
+      fileHashes: { 'src/a.ts': 'hash1' },
+      lastSuccessAt: '2026-01-15T10:00:00.000Z',
+    };
+    mockReadFileSync.mockReturnValue(JSON.stringify({ 'src/**/*.ts': patternState }));
+    expect(loadState(statePath, 'src/**/*.ts')).toEqual(patternState);
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -291,5 +301,28 @@ describe('saveState', () => {
     await expect(saveState(statePath, 'src/**/*.ts', patternState)).rejects.toThrow(
       /Could not acquire state file lock/,
     );
+  });
+
+  it('persists lastSuccessAt when included in the state', async () => {
+    mockReadFile.mockRejectedValue(new Error('ENOENT'));
+    const stateWithTimestamp = {
+      headSha: 'abc123',
+      fileHashes: { 'src/a.ts': 'hash1' },
+      lastSuccessAt: '2026-01-15T10:00:00.000Z',
+    };
+
+    await saveState(statePath, 'src/**/*.ts', stateWithTimestamp);
+
+    const written = JSON.parse(vi.mocked(mockWriteFile).mock.calls[0][1] as string);
+    expect(written['src/**/*.ts'].lastSuccessAt).toBe('2026-01-15T10:00:00.000Z');
+  });
+
+  it('does not include lastSuccessAt when state was created without it', async () => {
+    mockReadFile.mockRejectedValue(new Error('ENOENT'));
+
+    await saveState(statePath, 'src/**/*.ts', patternState);
+
+    const written = JSON.parse(vi.mocked(mockWriteFile).mock.calls[0][1] as string);
+    expect(written['src/**/*.ts'].lastSuccessAt).toBeUndefined();
   });
 });

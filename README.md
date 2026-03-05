@@ -52,9 +52,10 @@ Crucially, these checks are **scoped to what actually changed**. If Claude only 
 ## How it works
 
 1. On each run, `gitdiff-watcher` snapshots the SHA-256 hashes of files that are in the git diff (unstaged + staged) and match the provided glob pattern.
-2. It compares this snapshot with the one stored from the previous execution.
-3. If any files changed between the two runs, it executes the specified commands in parallel.
-4. On the **first run** (no previous state), all matching diff files are treated as changed and commands are executed immediately.
+2. If the HEAD commit has changed since the last run, it also includes files reported by `git diff <previousHeadSha> HEAD` — ensuring that files committed between two executions are not silently skipped.
+3. It compares this snapshot with the one stored from the previous execution.
+4. If any files changed between the two runs, it executes the specified commands in parallel.
+5. On the **first run** (no previous state), all matching diff files are treated as changed and commands are executed immediately.
 
 State is persisted in `<git-root>/.claude/gitdiff-watcher.state.json`.
 
@@ -95,14 +96,15 @@ Multiple glob patterns can coexist in the same state file, each with their own i
 On each run, `gitdiff-watcher`:
 
 1. Collects files reported by `git diff HEAD` (unstaged changes) and `git diff --cached` (staged changes), then filters them against the provided glob pattern.
-2. Computes a SHA-256 hash of the on-disk content of each matching file.
-3. Loads the previous snapshot for that pattern from the state file (if any).
-4. Compares the two snapshots to identify:
+2. Loads the previous snapshot for that pattern from the state file (if any).
+3. If the persisted `headSha` differs from the current HEAD, also collects files reported by `git diff <persistedHeadSha> HEAD` and adds any matching ones to the candidate list. This ensures that files committed between two executions are included even though they no longer appear in `git diff HEAD`.
+4. Computes a SHA-256 hash of the on-disk content of each candidate file.
+5. Compares the two snapshots to identify:
    - **New files** - present in the current snapshot but not in the previous one
    - **Modified files** - present in both snapshots but with a different hash
    - **Deleted files** - present in the previous snapshot but absent from the current one
-5. If any such file is detected, the configured commands are triggered.
-6. The state file is updated **only if all commands succeeded**. If any command fails, the snapshot is left untouched so that the next run will re-detect the same changes and re-trigger the commands.
+6. If any such file is detected, the configured commands are triggered.
+7. The state file is updated **only if all commands succeeded**. If any command fails, the snapshot is left untouched so that the next run will re-detect the same changes and re-trigger the commands.
 
 The comparison is purely hash-based: timestamps and metadata are ignored.
 

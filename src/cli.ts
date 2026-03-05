@@ -4,7 +4,7 @@ import { Command } from 'commander';
 import { join } from 'node:path';
 import picomatch from 'picomatch';
 import type { CliArgs, PatternState } from './types.js';
-import { getGitRoot, getHeadSha, getDiffFiles } from './git.js';
+import { getGitRoot, getHeadSha, getDiffFiles, getDiffFilesBetweenCommits } from './git.js';
 import { computeHashes, loadState, saveState, findChangedFiles } from './state.js';
 import { executeAll, printFailures } from './executor.js';
 
@@ -77,14 +77,21 @@ async function main(): Promise<void> {
 
   // Filter diff files by glob pattern
   const isMatch = picomatch(args.on);
-  const matchingFiles = diffFiles.filter((f) => isMatch(f));
-
-  // Compute hashes for matching diff files
-  const currentHashes = await computeHashes(gitRoot, matchingFiles);
-  const currentState: PatternState = { headSha, fileHashes: currentHashes };
+  let matchingFiles = diffFiles.filter((f) => isMatch(f));
 
   // Load previous state
   const previousState = loadState(statePath, args.on);
+
+  // If HEAD moved since last run, also include files changed between the two commits
+  if (previousState?.headSha && previousState.headSha !== headSha) {
+    const commitDiffFiles = await getDiffFilesBetweenCommits(previousState.headSha, headSha);
+    const newFiles = commitDiffFiles.filter((f) => isMatch(f) && !matchingFiles.includes(f));
+    matchingFiles = [...matchingFiles, ...newFiles];
+  }
+
+  // Compute hashes for matching files
+  const currentHashes = await computeHashes(gitRoot, matchingFiles);
+  const currentState: PatternState = { headSha, fileHashes: currentHashes };
 
   // Detect changes between previous and current snapshots
   const changedFiles = findChangedFiles(previousState?.fileHashes ?? {}, currentHashes);

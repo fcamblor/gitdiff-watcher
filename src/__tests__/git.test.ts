@@ -5,7 +5,7 @@ vi.mock('node:child_process', () => ({
 }));
 
 import { execFile } from 'node:child_process';
-import { getGitRoot, getHeadSha, getDiffFiles } from '../git.js';
+import { getGitRoot, getHeadSha, getDiffFiles, getDiffFilesBetweenCommits } from '../git.js';
 
 const mockExecFile = vi.mocked(execFile);
 
@@ -111,5 +111,37 @@ describe('getDiffFiles', () => {
     stubExecFile('\nsrc/a.ts\n\n'); // unstaged with empty lines
     stubExecFile('');               // staged
     expect(await getDiffFiles()).toEqual(['src/a.ts']);
+  });
+});
+
+describe('getDiffFilesBetweenCommits', () => {
+  it('calls git diff --name-only with the two SHAs', async () => {
+    stubExecFile('src/a.ts\nsrc/b.ts\n');
+    await getDiffFilesBetweenCommits('oldSha', 'newSha');
+    expect(mockExecFile).toHaveBeenCalledWith(
+      'git',
+      ['diff', '--name-only', 'oldSha', 'newSha'],
+      expect.any(Function),
+    );
+  });
+
+  it('returns the list of changed files', async () => {
+    stubExecFile('src/a.ts\nsrc/b.ts\n');
+    expect(await getDiffFilesBetweenCommits('sha1', 'sha2')).toEqual(['src/a.ts', 'src/b.ts']);
+  });
+
+  it('returns empty array when no files changed between commits', async () => {
+    stubExecFile('');
+    expect(await getDiffFilesBetweenCommits('sha1', 'sha2')).toEqual([]);
+  });
+
+  it('returns empty array when git command fails (e.g. unknown SHA)', async () => {
+    stubExecFileError(new Error('unknown revision'));
+    expect(await getDiffFilesBetweenCommits('badSha', 'HEAD')).toEqual([]);
+  });
+
+  it('ignores empty lines in git output', async () => {
+    stubExecFile('\nsrc/a.ts\n\nsrc/b.ts\n\n');
+    expect(await getDiffFilesBetweenCommits('sha1', 'sha2')).toEqual(['src/a.ts', 'src/b.ts']);
   });
 });

@@ -15,6 +15,12 @@ export async function getHeadSha(): Promise<string> {
   return stdout.trim();
 }
 
+/** Returns files that changed between two commits, relative to git root */
+export async function getDiffFilesBetweenCommits(fromSha: string, toSha: string): Promise<string[]> {
+  const { stdout } = await execFileAsync('git', ['diff', '--name-only', fromSha, toSha]).catch(() => ({ stdout: '' }));
+  return stdout.trim().split('\n').filter(Boolean);
+}
+
 /** Returns deduplicated list of files in the git diff (unstaged + staged), relative to git root */
 export async function getDiffFiles(): Promise<string[]> {
   const [unstaged, staged] = await Promise.all([

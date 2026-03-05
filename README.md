@@ -1,8 +1,53 @@
 # gitdiff-watcher
 
-> ⚠️ **Work in progress** — this project is not yet stable. APIs, CLI options, and the state file format may change at any time.
+> ⚠️ **Work in progress** - this project is not yet stable. APIs, CLI options, and the state file format may change at any time.
 
 Run commands when files matching a glob pattern change between executions. Designed as a [Claude Code](https://docs.anthropic.com/en/docs/claude-code) lifecycle hook (`Stop` / `SubagentStop`).
+
+## Why
+
+When Claude Code finishes a task and hands back control, there is no built-in guarantee that the code it produced is actually valid - it may have introduced a compilation error, broken a lint rule, or caused a test to fail.
+
+A natural reflex is to add instructions to `CLAUDE.md`, `AGENTS.md`, or a rules file:
+
+> "Always make sure the code compiles before finishing."  
+> "Tests must pass before handing back control."  
+
+**This does not work reliably.** These instructions are part of the LLM context, which means they are subject to the same limitations: the model may overlook them, deprioritize them under pressure, or simply lose track of them as the context grows and gets compacted during long sessions.  
+There is no enforcement mechanism - only a hint that may or may not be followed.
+
+**The only way to get a true guarantee is to move the check outside the model entirely**, into a lifecycle hook that runs deterministically after every stop event, regardless of what the model did or did not do.
+
+`gitdiff-watcher` is designed exactly for this. Add it as a hook in your project's `.claude/settings.json` and it will enforce a **deterministic quality gate every time Claude Code stops**:
+
+```json
+{
+  "hooks": {
+    "Stop": [ // might also be SubagentStop
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "npx gitdiff-watcher --on 'frontend/**/*.ts' --exec 'cd frontend && npm run lint' --exec 'cd frontend && npm run typecheck'"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "npx gitdiff-watcher --on 'backend/**/*.kt' --exec 'cd backend && ./gradlew lint' --exec 'cd backend && ./gradlew build'"
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+Crucially, these checks are **scoped to what actually changed**. If Claude only touched frontend files, there is no reason to rebuild the backend. Each check is tied to a glob pattern and runs only when matching files have changed since the last execution. This keeps hooks fast and avoids triggering unrelated parts of the build.
 
 ## How it works
 
@@ -19,9 +64,9 @@ State is persisted in `<git-root>/.claude/gitdiff-watcher.state.json`.
 
 The state file is a JSON object keyed by glob pattern. For each pattern, it stores:
 
-- **`headSha`** — the HEAD commit SHA at the time of the last run, used to determine which files are "diverged" from HEAD
-- **`fileHashes`** — a map of relative file path → SHA-256 content hash, covering only the files currently reported by `git diff` (unstaged or staged) that match the glob pattern, whether or not those files are tracked by git
-- **`lastSuccessAt`** — ISO-8601 timestamp of the last run that triggered commands and completed successfully (absent on the initial baseline run)
+- **`headSha`** - the HEAD commit SHA at the time of the last run, used to determine which files are "diverged" from HEAD
+- **`fileHashes`** - a map of relative file path → SHA-256 content hash, covering only the files currently reported by `git diff` (unstaged or staged) that match the glob pattern, whether or not those files are tracked by git
+- **`lastSuccessAt`** - ISO-8601 timestamp of the last run that triggered commands and completed successfully (absent on the initial baseline run)
 
 ```json
 {
@@ -53,9 +98,9 @@ On each run, `gitdiff-watcher`:
 2. Computes a SHA-256 hash of the on-disk content of each matching file.
 3. Loads the previous snapshot for that pattern from the state file (if any).
 4. Compares the two snapshots to identify:
-   - **New files** — present in the current snapshot but not in the previous one
-   - **Modified files** — present in both snapshots but with a different hash
-   - **Deleted files** — present in the previous snapshot but absent from the current one
+   - **New files** - present in the current snapshot but not in the previous one
+   - **Modified files** - present in both snapshots but with a different hash
+   - **Deleted files** - present in the previous snapshot but absent from the current one
 5. If any such file is detected, the configured commands are triggered.
 6. The state file is updated **only if all commands succeeded**. If any command fails, the snapshot is left untouched so that the next run will re-detect the same changes and re-trigger the commands.
 
@@ -88,38 +133,7 @@ npx gitdiff-watcher \
 
 ### Exit codes
 
-- `0` — All commands succeeded (or no changes detected)
-- `1` — At least one command failed (error output is printed to stderr)
-
-## Claude Code Hook Configuration
-
-Add to your project's `.claude/settings.json`:
-
-```json
-{
-  "hooks": {
-    "Stop": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "npx gitdiff-watcher --on 'frontend/**/*.ts' --exec 'cd frontend && npm run lint' --exec 'cd frontend && npm run typecheck'"
-          }
-        ]
-      }
-    ],
-    "SubagentStop": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "npx gitdiff-watcher --on 'backend/**/*.kt' --exec 'cd backend && ./gradlew lint' --exec 'cd backend && ./gradlew build'"
-          }
-        ]
-      }
-    ]
-  }
-}
-```
+- `0` - All commands succeeded (or no changes detected)
+- `1` - At least one command failed (error output is printed to stderr)
 
 When a command fails, its stdout/stderr is printed to stderr so the LLM can interpret the errors and fix the issues.

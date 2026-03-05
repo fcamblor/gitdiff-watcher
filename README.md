@@ -54,7 +54,7 @@ Crucially, these checks are **scoped to what actually changed**. If Claude only 
 1. On each run, `gitdiff-watcher` snapshots the SHA-256 hashes of files that are in the git diff (unstaged + staged) and match the provided glob pattern.
 2. It compares this snapshot with the one stored from the previous execution.
 3. If any files changed between the two runs, it executes the specified commands in parallel.
-4. On the **first run**, it stores a baseline and exits successfully without running any commands.
+4. On the **first run** (no previous state), all matching diff files are treated as changed and commands are executed immediately.
 
 State is persisted in `<git-root>/.claude/gitdiff-watcher.state.json`.
 
@@ -66,7 +66,7 @@ The state file is a JSON object keyed by glob pattern. For each pattern, it stor
 
 - **`headSha`** - the HEAD commit SHA at the time of the last run, used to determine which files are "diverged" from HEAD
 - **`fileHashes`** - a map of relative file path → SHA-256 content hash, covering only the files currently reported by `git diff` (unstaged or staged) that match the glob pattern, whether or not those files are tracked by git
-- **`lastSuccessAt`** - ISO-8601 timestamp of the last run that triggered commands and completed successfully (absent on the initial baseline run)
+- **`lastSuccessAt`** - ISO-8601 timestamp of the last run that triggered commands and completed successfully
 
 ```json
 {

@@ -84,6 +84,14 @@ describe('findChangedFiles', () => {
   it('returns empty array when both snapshots are empty', () => {
     expect(findChangedFiles({}, {})).toEqual([]);
   });
+
+  it('returns all current files as changed when previous snapshot is empty (first-run scenario)', () => {
+    const current = { 'src/a.ts': 'hash1', 'src/b.ts': 'hash2' };
+    const changed = findChangedFiles({}, current);
+    expect(changed).toContain('src/a.ts');
+    expect(changed).toContain('src/b.ts');
+    expect(changed).toHaveLength(2);
+  });
 });
 
 // ---------------------------------------------------------------------------

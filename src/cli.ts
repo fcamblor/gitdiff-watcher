@@ -86,17 +86,8 @@ async function main(): Promise<void> {
   // Load previous state
   const previousState = loadState(statePath, args.on);
 
-  if (!previousState) {
-    // First run: store baseline, exit successfully
-    process.stderr.write(
-      `gitdiff-watcher: first run for pattern "${args.on}", storing baseline (${matchingFiles.length} files tracked)\n`,
-    );
-    await saveState(statePath, args.on, currentState);
-    process.exit(0);
-  }
-
   // Detect changes between previous and current snapshots
-  const changedFiles = findChangedFiles(previousState.fileHashes, currentHashes);
+  const changedFiles = findChangedFiles(previousState?.fileHashes ?? {}, currentHashes);
 
   if (changedFiles.length === 0) {
     process.exit(0);

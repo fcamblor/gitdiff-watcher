@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node dist/cli.js --on 'src/**/*.ts' --exec 'npm run build && npm run test'",
+            "timeout": 300,
+            "statusMessage": "Typescript compilation check..."
+          }
+        ]
+      }
+    ]
+  }
+}

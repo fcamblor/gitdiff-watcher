@@ -176,7 +176,7 @@ describe('computeHashes', () => {
 // ---------------------------------------------------------------------------
 
 describe('loadState', () => {
-  const statePath = '/root/.claude/gitdiff-watcher.state.json';
+  const statePath = '/root/.claude/gitdiff-watcher.state.local.json';
 
   it('returns null when state file does not exist', () => {
     mockReadFileSync.mockImplementation(() => { throw new Error('ENOENT'); });
@@ -207,7 +207,7 @@ describe('loadState', () => {
 
   it('reads from the provided state file path', () => {
     mockReadFileSync.mockImplementation(() => { throw new Error('ENOENT'); });
-    const customPath = '/my/project/.claude/gitdiff-watcher.state.json';
+    const customPath = '/my/project/.claude/gitdiff-watcher.state.local.json';
     loadState(customPath, 'src/**/*.ts');
     expect(mockReadFileSync).toHaveBeenCalledWith(customPath, 'utf-8');
   });
@@ -228,7 +228,7 @@ describe('loadState', () => {
 // ---------------------------------------------------------------------------
 
 describe('saveState', () => {
-  const statePath = '/root/.claude/gitdiff-watcher.state.json';
+  const statePath = '/root/.claude/gitdiff-watcher.state.local.json';
   const lockPath = `${statePath}.lock`;
   const patternState = { headSha: 'abc123', divergedFileHashes: { 'src/a.ts': 'hash1' } };
 
@@ -270,7 +270,7 @@ describe('saveState', () => {
 
   it('writes to the provided state file path', async () => {
     mockReadFile.mockRejectedValue(new Error('ENOENT'));
-    const customPath = '/my/project/.claude/gitdiff-watcher.state.json';
+    const customPath = '/my/project/.claude/gitdiff-watcher.state.local.json';
     await saveState(customPath, 'src/**/*.ts', patternState);
     expect(mockWriteFile).toHaveBeenCalledWith(customPath, expect.any(String));
   });

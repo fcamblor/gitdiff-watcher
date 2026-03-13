@@ -57,7 +57,7 @@ Crucially, these checks are **scoped to what actually changed**. If Claude only 
 4. If any files changed between the two runs, it executes the specified commands in parallel.
 5. On the **first run** (no previous state), all matching diff files are treated as changed and commands are executed immediately.
 
-State is persisted in `<git-root>/.claude/gitdiff-watcher.state.json`.
+State is persisted in `<git-root>/.claude/gitdiff-watcher.state.local.json`.
 
 ## Internals
 

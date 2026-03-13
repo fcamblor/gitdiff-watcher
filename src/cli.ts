@@ -8,7 +8,7 @@ import { getGitRoot, getHeadSha, getDiffFiles, getDiffFilesBetweenCommits } from
 import { computeHashes, loadState, saveState, findChangedFiles } from './state.js';
 import { executeAll, printFailures } from './executor.js';
 
-const DEFAULT_STATE_FILE = '.claude/gitdiff-watcher.state.json';
+const DEFAULT_STATE_FILE = '.claude/gitdiff-watcher.state.local.json';
 
 function collect(value: string, previous: string[]): string[] {
   return previous.concat([value]);

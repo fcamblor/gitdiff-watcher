@@ -115,7 +115,7 @@ async function main(): Promise<void> {
 
   if (failures.length > 0) {
     printFailures(failures);
-    process.exit(1);
+    process.exit(2);
   }
 
   // Save state only after all commands succeeded

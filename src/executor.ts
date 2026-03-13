@@ -26,7 +26,7 @@ export async function executeCommand(
     const err = error as { code?: number; stdout?: string; stderr?: string };
     return {
       command,
-      exitCode: err.code ?? 1,
+      exitCode: err.code ?? 2,
       stdout: err.stdout ?? '',
       stderr: err.stderr ?? '',
     };

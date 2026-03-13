@@ -128,4 +128,4 @@ npx @fcamblor/gitdiff-watcher \
 ### Exit codes
 
 - `0` - All commands succeeded (or no changes detected) — no output is produced, keeping hooks invisible and saving LLM context tokens
-- `1` - At least one command failed — stdout/stderr of the failing command is printed to stderr so the LLM can interpret the errors and fix the issues
+- `2` - At least one command failed — stdout/stderr of the failing command is printed to stderr so that Claude resumes and can fix the issues

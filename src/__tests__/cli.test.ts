@@ -172,7 +172,7 @@ describe('578d7cc — lastSuccessAt timestamp saved after successful run', () =>
     await runCli(BASE_ARGV, mocks);
 
     expect(mocks.state.saveState).not.toHaveBeenCalled();
-    expect(capturedExitCode).toBe(1);
+    expect(capturedExitCode).toBe(2);
   });
 });
 
@@ -227,6 +227,56 @@ describe('19f1736 — first run executes commands immediately', () => {
     await runCli(BASE_ARGV, mocks);
 
     expect(mocks.executor.executeAll).not.toHaveBeenCalled();
+    expect(capturedExitCode).toBe(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Initialize state for new patterns even when no changes are detected
+// ---------------------------------------------------------------------------
+
+describe('initialize state for untracked patterns with no current changes', () => {
+  it('saves state with headSha when pattern has no previous state and no changes detected', async () => {
+    const mocks = createMocks({
+      git: {
+        getHeadSha: vi.fn().mockResolvedValue('currentSha'),
+        getDiffFiles: vi.fn().mockResolvedValue([]),
+      },
+      state: {
+        loadState: vi.fn().mockReturnValue(null),
+        computeHashes: vi.fn().mockResolvedValue({}),
+        findChangedFiles: vi.fn().mockReturnValue([]),
+      },
+    });
+
+    await runCli(BASE_ARGV, mocks);
+
+    expect(mocks.state.saveState).toHaveBeenCalledOnce();
+    const [, pattern, savedState] = mocks.state.saveState.mock.calls[0];
+    expect(pattern).toBe('src/**/*.ts');
+    expect(savedState.headSha).toBe('currentSha');
+    expect(savedState.divergedFileHashes).toEqual({});
+    expect(typeof savedState.lastSuccessAt).toBe('string');
+    expect(mocks.executor.executeAll).not.toHaveBeenCalled();
+    expect(capturedExitCode).toBe(0);
+  });
+
+  it('does not save state when pattern already exists and no changes detected', async () => {
+    const mocks = createMocks({
+      git: {
+        getHeadSha: vi.fn().mockResolvedValue('sameSha'),
+        getDiffFiles: vi.fn().mockResolvedValue([]),
+      },
+      state: {
+        loadState: vi.fn().mockReturnValue({ headSha: 'sameSha', divergedFileHashes: {} }),
+        computeHashes: vi.fn().mockResolvedValue({}),
+        findChangedFiles: vi.fn().mockReturnValue([]),
+      },
+    });
+
+    await runCli(BASE_ARGV, mocks);
+
+    expect(mocks.state.saveState).not.toHaveBeenCalled();
     expect(capturedExitCode).toBe(0);
   });
 });

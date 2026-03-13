@@ -97,6 +97,11 @@ async function main(): Promise<void> {
   const changedFiles = findChangedFiles(previousState?.divergedFileHashes ?? {}, currentHashes);
 
   if (changedFiles.length === 0) {
+    // Initialize state for new patterns even when no changes detected,
+    // so that future runs can track inter-commit diffs via headSha
+    if (!previousState) {
+      await saveState(statePath, args.on, { ...currentState, lastSuccessAt: new Date().toISOString() });
+    }
     process.exit(0);
   }
 

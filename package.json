@@ -1,6 +1,6 @@
 {
   "name": "@fcamblor/gitdiff-watcher",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Run commands when git diff changes are detected",
   "license": "MIT",
   "author": {

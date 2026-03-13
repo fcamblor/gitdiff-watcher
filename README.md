@@ -28,7 +28,7 @@ There is no enforcement mechanism - only a hint that may or may not be followed.
         "hooks": [
           {
             "type": "command",
-            "command": "npx gitdiff-watcher --on 'frontend/**/*.ts' --exec 'cd frontend && npm run lint' --exec 'cd frontend && npm run typecheck'"
+            "command": "npx @fcamblor/gitdiff-watcher --on 'frontend/**/*.ts' --exec 'cd frontend && npm run lint' --exec 'cd frontend && npm run typecheck'"
           }
         ]
       }
@@ -38,7 +38,7 @@ There is no enforcement mechanism - only a hint that may or may not be followed.
         "hooks": [
           {
             "type": "command",
-            "command": "npx gitdiff-watcher --on 'backend/**/*.kt' --exec 'cd backend && ./gradlew lint' --exec 'cd backend && ./gradlew build'"
+            "command": "npx @fcamblor/gitdiff-watcher --on 'backend/**/*.kt' --exec 'cd backend && ./gradlew lint' --exec 'cd backend && ./gradlew build'"
           }
         ]
       }
@@ -111,7 +111,7 @@ The comparison is purely hash-based: timestamps and metadata are ignored.
 ## Usage
 
 ```bash
-npx gitdiff-watcher \
+npx @fcamblor/gitdiff-watcher \
   --on "frontend/**/*.ts" \
   --exec "cd frontend && npm run lint" \
   --exec "cd frontend && npm run typecheck"

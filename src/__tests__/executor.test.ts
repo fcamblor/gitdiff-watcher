@@ -101,7 +101,7 @@ describe('executeCommand', () => {
       return undefined as any;
     });
     const result = await executeCommand('bad', 5000);
-    expect(result.exitCode).toBe(1);
+    expect(result.exitCode).toBe(2);
   });
 
   it('returns empty strings for stdout/stderr when missing from error', async () => {

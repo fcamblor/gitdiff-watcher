@@ -10,6 +10,12 @@
   "bin": {
     "gitdiff-watcher": "dist/cli.js"
   },
+  "exports": {
+    ".": {
+      "types": "./dist/core.d.ts",
+      "import": "./dist/core.js"
+    }
+  },
   "files": [
     "dist"
   ],

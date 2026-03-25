@@ -124,6 +124,33 @@ npx -y @fcamblor/gitdiff-watcher@0.1.0 \
 | `--on <glob>` | Glob pattern to match changed files | Yes |
 | `--exec <command>` | Shell command to run (repeatable) | Yes |
 | `--exec-timeout <seconds>` | Timeout per command (default: 300) | No |
+| `--files-separator <sep>` | Separator used between file paths in template variables (default: `\n`) | No |
+
+### Template variables
+
+You can embed the list of matched files directly in `--exec` commands using `{{double-brace}}` placeholders:
+
+| Variable | Description |
+|----------|-------------|
+| `{{ON_CHANGES_RUN_DIFF_FILES}}` | All files matching the glob pattern that appear in the current git diff (staged + unstaged) |
+| `{{ON_CHANGES_RUN_CHANGED_FILES}}` | Only the files that actually changed since the last run (subset of the above) |
+
+By default, file paths are separated by newlines. Use `--files-separator` to change the separator.
+
+**Example — pass changed files as space-separated quoted arguments:**
+
+```bash
+npx @fcamblor/gitdiff-watcher@0.1.0 \
+  --on '**/CLAUDE.md' \
+  --files-separator '" "' \
+  --exec '.claude/scripts/enforce-claude-md-max-line-length.sh "{{ON_CHANGES_RUN_CHANGED_FILES}}"'
+```
+
+If two `CLAUDE.md` files changed, the command becomes:
+
+```bash
+.claude/scripts/enforce-claude-md-max-line-length.sh "docs/CLAUDE.md" "backend/CLAUDE.md"
+```
 
 ### Exit codes
 

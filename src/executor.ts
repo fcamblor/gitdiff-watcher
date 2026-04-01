@@ -14,12 +14,14 @@ export async function executeCommand(
   command: string,
   timeoutMs: number,
   templateVars: Record<string, string> = {},
+  cwd?: string,
 ): Promise<CommandResult> {
   const interpolatedCommand = interpolateTemplate(command, templateVars);
   try {
     const { stdout, stderr } = await execAsync(interpolatedCommand, {
       maxBuffer: 10 * 1024 * 1024,
       timeout: timeoutMs,
+      ...(cwd ? { cwd } : {}),
     });
     return { command, exitCode: 0, stdout, stderr };
   } catch (error: unknown) {
@@ -38,8 +40,9 @@ export async function executeAll(
   commands: string[],
   timeoutMs: number,
   templateVars: Record<string, string> = {},
+  cwd?: string,
 ): Promise<CommandResult[]> {
-  return Promise.all(commands.map((cmd) => executeCommand(cmd, timeoutMs, templateVars)));
+  return Promise.all(commands.map((cmd) => executeCommand(cmd, timeoutMs, templateVars, cwd)));
 }
 
 /** Print details of failed commands to stderr */

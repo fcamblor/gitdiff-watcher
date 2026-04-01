@@ -83,10 +83,11 @@ export async function runWatcher(config: WatcherConfig): Promise<WatcherResult> 
   // Run all commands in parallel
   const timeoutMs = execTimeout * 1000;
   const templateVars = {
+    GIT_PROJECT_ROOT: gitRoot,
     ON_CHANGES_RUN_DIFF_FILES: matchingFiles.join(filesSeparator),
     ON_CHANGES_RUN_CHANGED_FILES: changedFiles.join(filesSeparator),
   };
-  const results = await executeAll(commands, timeoutMs, templateVars);
+  const results = await executeAll(commands, timeoutMs, templateVars, gitRoot);
   const failures = results.filter((r) => r.exitCode !== 0);
 
   if (failures.length > 0) {

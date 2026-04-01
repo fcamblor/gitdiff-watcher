@@ -159,6 +159,20 @@ describe('executeCommand', () => {
     const callOpts = vi.mocked(mockExec).mock.calls[0][1] as any;
     expect(callOpts.timeout).toBe(12345);
   });
+
+  it('passes cwd to exec options when provided', async () => {
+    stubExecSuccess('');
+    await executeCommand('cmd', 5000, {}, '/some/project/root');
+    const callOpts = vi.mocked(mockExec).mock.calls[0][1] as any;
+    expect(callOpts.cwd).toBe('/some/project/root');
+  });
+
+  it('does not set cwd in exec options when not provided', async () => {
+    stubExecSuccess('');
+    await executeCommand('cmd', 5000);
+    const callOpts = vi.mocked(mockExec).mock.calls[0][1] as any;
+    expect(callOpts.cwd).toBeUndefined();
+  });
 });
 
 // ---------------------------------------------------------------------------

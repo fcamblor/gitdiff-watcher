@@ -28,7 +28,7 @@ There is no enforcement mechanism - only a hint that may or may not be followed.
         "hooks": [
           {
             "type": "command",
-            "command": "npx -y @fcamblor/gitdiff-watcher@0.1.0 --on 'frontend/**/*.ts' --exec 'cd frontend && npm run lint' --exec 'cd frontend && npm run typecheck'"
+            "command": "npx -y @fcamblor/gitdiff-watcher@0.2.0 --on 'frontend/**/*.ts' --exec 'cd frontend && npm run lint' --exec 'cd frontend && npm run typecheck'"
           }
         ]
       }
@@ -38,7 +38,7 @@ There is no enforcement mechanism - only a hint that may or may not be followed.
         "hooks": [
           {
             "type": "command",
-            "command": "npx -y @fcamblor/gitdiff-watcher@0.1.0 --on 'backend/**/*.kt' --exec 'cd backend && ./gradlew lint' --exec 'cd backend && ./gradlew build'"
+            "command": "npx -y @fcamblor/gitdiff-watcher@0.2.0 --on 'backend/**/*.kt' --exec 'cd backend && ./gradlew lint' --exec 'cd backend && ./gradlew build'"
           }
         ]
       }
@@ -111,7 +111,7 @@ The comparison is purely hash-based: timestamps and metadata are ignored.
 ## Usage
 
 ```bash
-npx -y @fcamblor/gitdiff-watcher@0.1.0 \
+npx -y @fcamblor/gitdiff-watcher@0.2.0 \
   --on "frontend/**/*.ts" \
   --exec "cd frontend && npm run lint" \
   --exec "cd frontend && npm run typecheck"
@@ -122,7 +122,7 @@ npx -y @fcamblor/gitdiff-watcher@0.1.0 \
 | Option | Description | Required |
 |--------|-------------|----------|
 | `--on <glob>` | Glob pattern to match changed files | Yes |
-| `--exec <command>` | Shell command to run (repeatable) | Yes |
+| `--exec <command>` | Shell command to run (repeatable, executed from git root) | Yes |
 | `--exec-timeout <seconds>` | Timeout per command (default: 300) | No |
 | `--files-separator <sep>` | Separator used between file paths in template variables (default: `\n`) | No |
 
@@ -132,6 +132,7 @@ You can embed the list of matched files directly in `--exec` commands using `{{d
 
 | Variable | Description |
 |----------|-------------|
+| `{{GIT_PROJECT_ROOT}}` | Absolute path to the git repository root |
 | `{{ON_CHANGES_RUN_DIFF_FILES}}` | All files matching the glob pattern that appear in the current git diff (staged + unstaged) |
 | `{{ON_CHANGES_RUN_CHANGED_FILES}}` | Only the files that actually changed since the last run (subset of the above) |
 
@@ -140,7 +141,7 @@ By default, file paths are separated by newlines. Use `--files-separator` to cha
 **Example — pass changed files as space-separated quoted arguments:**
 
 ```bash
-npx @fcamblor/gitdiff-watcher@0.1.0 \
+npx @fcamblor/gitdiff-watcher@0.2.0 \
   --on '**/CLAUDE.md' \
   --files-separator '" "' \
   --exec '.claude/scripts/enforce-claude-md-max-line-length.sh "{{ON_CHANGES_RUN_CHANGED_FILES}}"'

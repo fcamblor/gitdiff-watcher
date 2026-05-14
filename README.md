@@ -1,6 +1,10 @@
 # gitdiff-watcher
 
-Run commands when files matching a glob pattern change between executions. Designed as a [Claude Code](https://docs.anthropic.com/en/docs/claude-code) lifecycle hook (`Stop` / `SubagentStop`).
+Run deterministic commands based on what actually changed in your git diff.
+
+`gitdiff-watcher` watches git diffs between executions and runs commands only when files matching a glob pattern have changed.  
+It helps you build fast, scoped, and deterministic quality gates - especially useful after LLM-driven edits or from Claude Code lifecycle hooks (`Stop` / `SubagentStop`).
+
 
 ## Why
 

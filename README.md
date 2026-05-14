@@ -1,7 +1,5 @@
 # gitdiff-watcher
 
-> ⚠️ **Work in progress** - this project is not yet stable. APIs, CLI options, and the state file format may change at any time.
-
 Run commands when files matching a glob pattern change between executions. Designed as a [Claude Code](https://docs.anthropic.com/en/docs/claude-code) lifecycle hook (`Stop` / `SubagentStop`).
 
 ## Why

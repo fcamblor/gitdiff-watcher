@@ -30,7 +30,7 @@ There is no enforcement mechanism - only a hint that may or may not be followed.
         "hooks": [
           {
             "type": "command",
-            "command": "npx -y @fcamblor/gitdiff-watcher@0.2.0 --on 'frontend/**/*.ts' --exec 'cd frontend && npm run lint' --exec 'cd frontend && npm run typecheck'"
+            "command": "npx -y @fcamblor/gitdiff-watcher@0.3.0 --on 'frontend/**/*.ts' --exec 'cd frontend && npm run lint' --exec 'cd frontend && npm run typecheck'"
           }
         ]
       }
@@ -40,7 +40,7 @@ There is no enforcement mechanism - only a hint that may or may not be followed.
         "hooks": [
           {
             "type": "command",
-            "command": "npx -y @fcamblor/gitdiff-watcher@0.2.0 --on 'backend/**/*.kt' --exec 'cd backend && ./gradlew lint' --exec 'cd backend && ./gradlew build'"
+            "command": "npx -y @fcamblor/gitdiff-watcher@0.3.0 --on 'backend/**/*.kt' --exec 'cd backend && ./gradlew lint' --exec 'cd backend && ./gradlew build'"
           }
         ]
       }
@@ -113,7 +113,7 @@ The comparison is purely hash-based: timestamps and metadata are ignored.
 ## Usage
 
 ```bash
-npx -y @fcamblor/gitdiff-watcher@0.2.0 \
+npx -y @fcamblor/gitdiff-watcher@0.3.0 \
   --on "frontend/**/*.ts" \
   --exec "cd frontend && npm run lint" \
   --exec "cd frontend && npm run typecheck"
@@ -143,7 +143,7 @@ By default, file paths are separated by newlines. Use `--files-separator` to cha
 **Example — pass changed files as space-separated quoted arguments:**
 
 ```bash
-npx @fcamblor/gitdiff-watcher@0.2.0 \
+npx @fcamblor/gitdiff-watcher@0.3.0 \
   --on '**/CLAUDE.md' \
   --files-separator '" "' \
   --exec '.claude/scripts/enforce-claude-md-max-line-length.sh "{{ON_CHANGES_RUN_CHANGED_FILES}}"'

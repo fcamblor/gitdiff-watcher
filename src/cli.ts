@@ -11,13 +11,13 @@ function collect(value: string, previous: string[]): string[] {
 function parseCliArgs(): CliArgs {
   const program = new Command();
   program
-    .name('gitdiff-watcher')
+    .name('delta-gate')
     .description('Run commands when files matching a glob pattern change between executions')
     .requiredOption('--on <glob>', 'Glob pattern to match changed files against')
     .requiredOption('--exec <command>', 'Command to execute (repeatable, run in parallel)', collect, [])
     .option('--exec-timeout <seconds>', 'Timeout per command in seconds', '300')
     .option('--files-separator <sep>', 'Separator used in {{ON_CHANGES_RUN_*}} template vars', '\n')
-    .option('--state-file <path>', 'Path to the state file (relative to git root)', '.claude/gitdiff-watcher.state.local.json')
+    .option('--state-file <path>', 'Path to the state file (relative to git root)', '.claude/delta-gate.state.local.json')
     .parse(process.argv);
 
   const opts = program.opts<{
@@ -76,6 +76,6 @@ async function main(): Promise<void> {
 }
 
 main().catch((err: unknown) => {
-  process.stderr.write(`gitdiff-watcher: fatal error: ${err}\n`);
+  process.stderr.write(`delta-gate: fatal error: ${err}\n`);
   process.exit(1);
 });

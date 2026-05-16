@@ -1,8 +1,8 @@
-# gitdiff-watcher
+# delta-gate
 
 Run deterministic commands based on what actually changed in your git diff.
 
-`gitdiff-watcher` watches git diffs between executions and runs commands only when files matching a glob pattern have changed.  
+`delta-gate` watches git diffs between executions and runs commands only when files matching a glob pattern have changed.  
 It helps you build fast, scoped, and deterministic quality gates - especially useful after LLM-driven edits or from Claude Code lifecycle hooks (`Stop` / `SubagentStop`).
 
 
@@ -20,7 +20,7 @@ There is no enforcement mechanism - only a hint that may or may not be followed.
 
 **The only way to get a true guarantee is to move the check outside the model entirely**, into a lifecycle hook that runs deterministically after every stop event, regardless of what the model did or did not do.
 
-`gitdiff-watcher` is designed exactly for this. Add it as a hook in your project's `.claude/settings.json` and it will enforce a **deterministic quality gate every time Claude Code stops**:
+`delta-gate` is designed exactly for this. Add it as a hook in your project's `.claude/settings.json` and it will enforce a **deterministic quality gate every time Claude Code stops**:
 
 ```json
 {
@@ -30,7 +30,7 @@ There is no enforcement mechanism - only a hint that may or may not be followed.
         "hooks": [
           {
             "type": "command",
-            "command": "npx -y @fcamblor/gitdiff-watcher@0.3.0 --on 'frontend/**/*.ts' --exec 'cd frontend && npm run lint' --exec 'cd frontend && npm run typecheck'"
+            "command": "npx -y delta-gate@0.3.0 --on 'frontend/**/*.ts' --exec 'cd frontend && npm run lint' --exec 'cd frontend && npm run typecheck'"
           }
         ]
       }
@@ -40,7 +40,7 @@ There is no enforcement mechanism - only a hint that may or may not be followed.
         "hooks": [
           {
             "type": "command",
-            "command": "npx -y @fcamblor/gitdiff-watcher@0.3.0 --on 'backend/**/*.kt' --exec 'cd backend && ./gradlew lint' --exec 'cd backend && ./gradlew build'"
+            "command": "npx -y delta-gate@0.3.0 --on 'backend/**/*.kt' --exec 'cd backend && ./gradlew lint' --exec 'cd backend && ./gradlew build'"
           }
         ]
       }
@@ -53,13 +53,13 @@ Crucially, these checks are **scoped to what actually changed**. If Claude only 
 
 ## How it works
 
-1. On each run, `gitdiff-watcher` snapshots the SHA-256 hashes of files that are in the git diff (unstaged + staged) and match the provided glob pattern.
+1. On each run, `delta-gate` snapshots the SHA-256 hashes of files that are in the git diff (unstaged + staged) and match the provided glob pattern.
 2. If the HEAD commit has changed since the last run, it also includes files reported by `git diff <previousHeadSha> HEAD` — ensuring that files committed between two executions are not silently skipped.
 3. It compares this snapshot with the one stored from the previous execution.
 4. If any files changed between the two runs, it executes the specified commands in parallel.
 5. On the **first run** (no previous state), all matching diff files are treated as changed and commands are executed immediately.
 
-State is persisted in `<git-root>/.claude/gitdiff-watcher.state.local.json`.
+State is persisted in `<git-root>/.claude/delta-gate.state.local.json`.
 
 ## Internals
 
@@ -95,7 +95,7 @@ Multiple glob patterns can coexist in the same state file, each with their own i
 
 ### Change detection between two executions
 
-On each run, `gitdiff-watcher`:
+On each run, `delta-gate`:
 
 1. Collects files reported by `git diff HEAD` (unstaged changes) and `git diff --cached` (staged changes), then filters them against the provided glob pattern.
 2. Loads the previous snapshot for that pattern from the state file (if any).
@@ -113,7 +113,7 @@ The comparison is purely hash-based: timestamps and metadata are ignored.
 ## Usage
 
 ```bash
-npx -y @fcamblor/gitdiff-watcher@0.3.0 \
+npx -y delta-gate@0.3.0 \
   --on "frontend/**/*.ts" \
   --exec "cd frontend && npm run lint" \
   --exec "cd frontend && npm run typecheck"
@@ -143,7 +143,7 @@ By default, file paths are separated by newlines. Use `--files-separator` to cha
 **Example — pass changed files as space-separated quoted arguments:**
 
 ```bash
-npx @fcamblor/gitdiff-watcher@0.3.0 \
+npx delta-gate@0.3.0 \
   --on '**/CLAUDE.md' \
   --files-separator '" "' \
   --exec '.claude/scripts/enforce-claude-md-max-line-length.sh "{{ON_CHANGES_RUN_CHANGED_FILES}}"'

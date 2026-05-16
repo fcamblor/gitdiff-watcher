@@ -15,7 +15,7 @@ class ExitError extends Error {
 // Shared test infrastructure
 // ---------------------------------------------------------------------------
 
-const BASE_ARGV = ['node', 'gitdiff-watcher', '--on', 'src/**/*.ts', '--exec', 'echo ok'];
+const BASE_ARGV = ['node', 'delta-gate', '--on', 'src/**/*.ts', '--exec', 'echo ok'];
 const ORIGINAL_ARGV = process.argv.slice();
 
 let capturedExitCode: number;
@@ -47,7 +47,7 @@ beforeEach(() => {
   };
   process.on('unhandledRejection', unhandledRejectionHandler);
 
-  // Suppress stderr output (gitdiff-watcher diagnostic messages + "fatal error:" from .catch())
+  // Suppress stderr output (delta-gate diagnostic messages + "fatal error:" from .catch())
   stderrSpy = vi.spyOn(process.stderr, 'write').mockReturnValue(true as any);
 
   // Make readStdin() return immediately (it blocks for 1s when stdin is not a TTY)

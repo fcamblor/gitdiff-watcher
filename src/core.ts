@@ -26,7 +26,7 @@ export interface WatcherResult {
   failures: Array<{ command: string; exitCode: number; stdout: string; stderr: string }>;
 }
 
-const DEFAULT_STATE_FILE = '.claude/gitdiff-watcher.state.local.json';
+const DEFAULT_STATE_FILE = '.claude/delta-gate.state.local.json';
 const DEFAULT_EXEC_TIMEOUT = 300;
 const DEFAULT_FILES_SEPARATOR = '\n';
 
@@ -77,7 +77,7 @@ export async function runWatcher(config: WatcherConfig): Promise<WatcherResult> 
   }
 
   process.stderr.write(
-    `gitdiff-watcher: ${changedFiles.length} file(s) changed matching "${pattern}", running ${commands.length} command(s)\n`,
+    `delta-gate: ${changedFiles.length} file(s) changed matching "${pattern}", running ${commands.length} command(s)\n`,
   );
 
   // Run all commands in parallel

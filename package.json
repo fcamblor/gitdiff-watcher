@@ -1,6 +1,6 @@
 {
-  "name": "@fcamblor/gitdiff-watcher",
-  "version": "0.3.0",
+  "name": "delta-gate",
+  "version": "0.2.0",
   "description": "Run commands when git diff changes are detected",
   "license": "MIT",
   "author": {
@@ -8,7 +8,7 @@
   },
   "type": "module",
   "bin": {
-    "gitdiff-watcher": "dist/cli.js"
+    "delta-gate": "dist/cli.js"
   },
   "exports": {
     ".": {

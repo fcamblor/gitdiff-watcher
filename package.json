@@ -1,6 +1,6 @@
 {
   "name": "delta-gate",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Run commands when git diff changes are detected",
   "license": "MIT",
   "author": {
